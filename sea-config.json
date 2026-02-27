@@ -1,0 +1,11 @@
+{
+  "main": "dist/bundle.cjs",
+  "output": "dist/sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false,
+  "useCodeCache": true,
+  "assets": {
+    "index.html": "public/index.html",
+    "sql-wasm.wasm": "node_modules/sql.js/dist/sql-wasm.wasm"
+  }
+}

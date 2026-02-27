@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Meter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <style>
+        :root{--bg:#f0f2f5;--card:#fff;--teal:#075e54;--teal2:#128c7e;--green:#25d366;--blue:#34b7f1;--red:#ea4335;--yellow:#fbbc04;--text:#111b21;--text2:#667781;--gap:16px;--r:14px;--shadow:0 2px 12px rgba(0,0,0,.06)}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-app-region:drag}
+        button,input,a,.step-card,.drop-zone{-webkit-app-region:no-drag}
+        .app{max-width:1440px;margin:0 auto;padding:var(--gap)}
+
+        /* ═══ SCREENS ═══ */
+        .screen{display:none;min-height:100vh;flex-direction:column;align-items:center;padding:60px 20px 40px}
+        .screen.active{display:flex}
+        .dashboard-wrap{display:none}.dashboard-wrap.active{display:block}
+
+        /* ═══ COMMON ═══ */
+        .logo{width:88px;height:88px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:28px;box-shadow:0 8px 32px rgba(37,211,102,.25)}
+        .logo svg{width:48px;height:48px;fill:#fff}
+        h1.hero{font-size:36px;font-weight:800;margin-bottom:8px;color:var(--text);letter-spacing:-.5px}
+        .subtitle{color:var(--text2);font-size:17px;max-width:480px;text-align:center;margin-bottom:36px}
+
+        .btn{padding:14px 48px;font-size:16px;font-weight:600;background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff;border:none;border-radius:10px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(7,94,84,.2)}
+        .btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(7,94,84,.3)}
+        .btn:active{transform:translateY(0)}
+        .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+        .btn.sm{padding:11px 28px;font-size:14px}
+        .btn.ghost{background:transparent;border:2px solid var(--teal);color:var(--teal);box-shadow:none;padding:12px 32px;font-size:14px}
+        .btn.ghost:hover{background:var(--teal);color:#fff}
+        .btn.wide{width:100%;margin:0}
+
+        .privacy-pill{display:inline-flex;align-items:center;gap:8px;background:#e8f5e9;border-radius:100px;padding:8px 18px;font-size:13px;color:#2e7d32;font-weight:500;margin-top:24px}
+        .privacy-pill svg{width:16px;height:16px;fill:#2e7d32}
+
+        /* ═══ SETUP WIZARD ═══ */
+        .setup-wrap{max-width:640px;width:100%}
+
+        /* Progress bar */
+        .progress-bar{display:flex;align-items:center;gap:0;margin-bottom:40px;padding:0 20px}
+        .p-step{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;position:relative;z-index:1}
+        .p-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;background:#d1d7db;transition:all .4s cubic-bezier(.4,0,.2,1);border:3px solid transparent}
+        .p-dot.active{background:var(--teal);border-color:rgba(7,94,84,.15);transform:scale(1.1);box-shadow:0 4px 16px rgba(7,94,84,.25)}
+        .p-dot.done{background:var(--green);border-color:rgba(37,211,102,.15)}
+        .p-label{font-size:11px;color:var(--text2);margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+        .p-label.active{color:var(--teal)}
+        .p-label.done{color:var(--green)}
+        .p-line{flex:1;height:3px;background:#d1d7db;transition:background .4s}
+        .p-line.done{background:var(--green)}
+
+        /* Step cards */
+        .step-card{background:var(--card);border-radius:var(--r);padding:36px;box-shadow:var(--shadow);display:none;animation:slideUp .3s ease}
+        .step-card.active{display:block}
+        @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .step-card h2{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
+        .step-card .desc{color:var(--text2);font-size:15px;margin-bottom:24px;line-height:1.6}
+
+        .step-card ol{padding-left:0;list-style:none;counter-reset:steps;margin-bottom:24px}
+        .step-card ol li{counter-increment:steps;padding:12px 0 12px 44px;border-bottom:1px solid #f0f2f5;font-size:14px;position:relative;line-height:1.5}
+        .step-card ol li:last-child{border-bottom:none}
+        .step-card ol li::before{content:counter(steps);position:absolute;left:0;top:12px;width:28px;height:28px;border-radius:50%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--teal)}
+        .step-card ol li a{color:var(--teal);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--teal)}
+        .step-card ol li a:hover{border-bottom-style:solid}
+
+        .field{margin-bottom:20px}
+        .field label{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+        .field input{width:100%;padding:13px 18px;border:2px solid #e9ecef;border-radius:10px;font-size:15px;font-family:inherit;transition:all .2s;background:#fafbfc}
+        .field input:focus{outline:none;border-color:var(--teal);background:#fff;box-shadow:0 0 0 4px rgba(7,94,84,.08)}
+        .field input.ok{border-color:var(--green);background:#f0fdf4}
+        .field .hint{font-size:12px;color:var(--text2);margin-top:6px}
+
+        .copy-row{background:#f8f9fa;border:2px solid #e9ecef;border-radius:10px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;margin:10px 0;font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;word-break:break-all;gap:12px}
+        .copy-btn{padding:7px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
+        .copy-btn:hover{background:var(--teal2)}
+        .copy-btn.ok{background:var(--green)}
+
+        .step-nav{display:flex;justify-content:space-between;margin-top:28px;gap:12px}
+
+        .callout{border-radius:10px;padding:16px 20px;margin:16px 0;font-size:13px;line-height:1.6}
+        .callout.blue{background:#e3f2fd;border:1px solid #bbdefb;color:#1565c0}
+        .callout.green{background:#e8f5e9;border:1px solid #c8e6c9;color:#2e7d32}
+        .callout.amber{background:#fff8e1;border:1px solid #ffecb3;color:#e65100}
+        .callout code{background:rgba(255,255,255,.6);padding:2px 6px;border-radius:4px;font-size:12px}
+
+        /* Live status indicators */
+        .live-status{display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:10px;margin:10px 0;font-size:14px;font-weight:500;transition:all .3s}
+        .live-status.pending{background:#f8f9fa;color:var(--text2)}
+        .live-status.working{background:#e3f2fd;color:#1565c0}
+        .live-status.success{background:#e8f5e9;color:#2e7d32}
+        .live-status.error{background:#fde8e8;color:#c0392b}
+        .status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+        .pending .status-dot{background:#d1d7db}
+        .working .status-dot{background:#1565c0;animation:pulse 1s infinite}
+        .success .status-dot{background:#2e7d32}
+        .error .status-dot{background:#c0392b}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+        .spinner-sm{width:18px;height:18px;border:2px solid #e9ecef;border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ═══ HOME SCREEN ═══ */
+        .status-card{background:var(--card);border-radius:var(--r);padding:28px;max-width:480px;width:100%;box-shadow:var(--shadow);margin-bottom:20px;text-align:left}
+        .status-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+        .status-row:last-child{border-bottom:none}
+        .status-label{color:var(--text2);font-weight:500}
+        .status-val{font-weight:600}
+        .status-val.live{color:var(--green)}
+        .status-val.empty{color:var(--yellow)}
+
+        .import-panel{max-width:480px;width:100%;margin-top:16px}
+        .drop-zone{width:100%;border:2px dashed #c3ccd2;border-radius:var(--r);padding:32px 24px;background:var(--card);cursor:pointer;transition:all .2s;text-align:center}
+        .drop-zone:hover,.drop-zone.drag-over{border-color:var(--green);background:rgba(37,211,102,.04)}
+        .drop-zone h3{font-size:16px;margin-bottom:4px}
+        .drop-zone span{color:var(--text2);font-size:13px}
+        .import-status{font-size:13px;color:var(--text2);margin-top:10px;text-align:center}
+
+        /* ═══ DASHBOARD ═══ */
+        .dash-header{background:linear-gradient(135deg,var(--teal),#128c7e);color:#fff;padding:20px 28px;border-radius:var(--r);margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+        .dash-header h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}
+        .dash-header h1 svg{width:28px;height:28px;fill:var(--green)}
+        .dash-header .sub{font-size:13px;opacity:.8;margin-top:2px}
+        .hdr-btn{padding:8px 16px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;cursor:pointer;transition:background .2s}
+        .hdr-btn:hover{background:rgba(255,255,255,.2)}
+        .privacy-dash{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:6px;padding:6px 14px;font-size:12px;color:rgba(255,255,255,.8)}
+        .privacy-dash svg{width:14px;height:14px;fill:var(--green)}
+
+        .filters{background:var(--card);padding:14px 20px;border-radius:var(--r);margin-bottom:var(--gap);display:flex;gap:16px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+        .fg{display:flex;align-items:center;gap:6px}
+        .fg label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+        .fg select,.fg input[type="date"]{padding:7px 12px;border:1px solid #d1d7db;border-radius:6px;font-size:13px;background:#fff;color:var(--text)}
+
+        .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+        .kpi{background:var(--card);border-radius:var(--r);padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
+        .kpi::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%}
+        .kpi.g::before{background:var(--green)}.kpi.t::before{background:var(--teal)}.kpi.b::before{background:var(--blue)}.kpi.r::before{background:var(--red)}.kpi.y::before{background:var(--yellow)}
+        .kpi-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px}
+        .kpi-val{font-size:28px;font-weight:700}
+        .kpi-sub{font-size:12px;color:var(--text2);margin-top:4px}
+
+        .chart-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+        .chart-box{background:var(--card);border-radius:var(--r);padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+        .chart-box h3{font-size:14px;font-weight:600;margin-bottom:14px}
+        .chart-box canvas{max-height:300px}
+
+        .tbl-section{background:var(--card);border-radius:var(--r);padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:var(--gap);overflow-x:auto}
+        .tbl-section h3{font-size:14px;font-weight:600;margin-bottom:14px}
+        table.dt{width:100%;border-collapse:collapse;font-size:13px}
+        .dt thead th{text-align:left;padding:10px 12px;border-bottom:2px solid #e9ecef;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+        .dt tbody td{padding:10px 12px;border-bottom:1px solid #f0f0f0}
+        .dt tbody tr:hover{background:#f8f9fa}
+        .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+        .badge.fast{background:#e6f9ee;color:#0d7d3f}.badge.med{background:#fff8e1;color:#b8860b}.badge.slow{background:#fde8e8;color:#c0392b}
+
+        .grade-card{background:var(--card);border-radius:var(--r);padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:var(--gap);text-align:center}
+        .grade-letter{font-size:72px;font-weight:800;margin-bottom:8px}
+        .grade-label{font-size:16px;color:var(--text2)}
+
+        .footer{text-align:center;padding:16px;font-size:12px;color:var(--text2)}
+        .spinner{width:40px;height:40px;border:4px solid #e9ecef;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+
+        @media(max-width:768px){.chart-row{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(2,1fr)}.step-card{padding:24px 20px}.progress-bar{padding:0}}
+        @media print{body{background:#fff}.filters,.hdr-btn{display:none}.kpi,.chart-box,.tbl-section{box-shadow:none;border:1px solid #e9ecef;break-inside:avoid}}
+    </style>
+</head>
+<body>
+<div class="app">
+
+<svg style="display:none">
+    <symbol id="waIcon" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></symbol>
+    <symbol id="shieldIcon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></symbol>
+    <symbol id="checkIcon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></symbol>
+</svg>
+
+<!-- ═══ WELCOME SCREEN ═══ -->
+<div class="screen active" id="scrWelcome">
+    <div class="logo"><svg><use href="#waIcon"/></svg></div>
+    <h1 class="hero">WhatsApp Meter</h1>
+    <p class="subtitle">See how fast you reply to everyone on WhatsApp. Connects to your WhatsApp Business account — takes about 5 minutes to set up.</p>
+    <button class="btn" onclick="startSetup()">Get started</button>
+    <div class="privacy-pill"><svg><use href="#shieldIcon"/></svg> Your messages are never stored — only timestamps</div>
+</div>
+
+<!-- ═══ SETUP WIZARD ═══ -->
+<div class="screen" id="scrSetup">
+    <div class="setup-wrap">
+
+        <div class="progress-bar">
+            <div class="p-step"><div class="p-dot active" id="d1">1</div><div class="p-label active" id="l1">Meta App</div></div>
+            <div class="p-line" id="ln1"></div>
+            <div class="p-step"><div class="p-dot" id="d2">2</div><div class="p-label" id="l2">Phone</div></div>
+            <div class="p-line" id="ln2"></div>
+            <div class="p-step"><div class="p-dot" id="d3">3</div><div class="p-label" id="l3">Webhook</div></div>
+            <div class="p-line" id="ln3"></div>
+            <div class="p-step"><div class="p-dot" id="d4">4</div><div class="p-label" id="l4">Connect</div></div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="step-card active" id="s1">
+            <h2>Create a free Meta Developer App</h2>
+            <p class="desc">This gives you a connection point to WhatsApp's official API. It takes about a minute.</p>
+            <ol>
+                <li>Open <a href="https://developers.facebook.com/apps/" target="_blank">Meta for Developers</a> and sign in</li>
+                <li>Click <strong>Create App</strong>, pick <strong>Other</strong>, then <strong>Business</strong></li>
+                <li>Name it anything you like (e.g. "My WhatsApp Meter")</li>
+                <li>On the app dashboard, click <strong>Add Product</strong>, find <strong>WhatsApp</strong>, and click <strong>Set Up</strong></li>
+            </ol>
+            <div class="field">
+                <label>Your App Secret</label>
+                <input type="text" id="inSecret" placeholder="Paste it here" oninput="validateStep1()">
+                <div class="hint">Find it in your new app's <strong>Settings &rarr; Basic</strong> &rarr; click "Show" next to App Secret</div>
+            </div>
+            <div class="step-nav">
+                <button class="btn ghost sm" onclick="show('scrWelcome')">&larr; Back</button>
+                <button class="btn sm" id="btn1" onclick="goStep(2)" disabled>Next &rarr;</button>
+            </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step-card" id="s2">
+            <h2>Link your WhatsApp Business number</h2>
+            <p class="desc">This connects your existing WhatsApp Business app to the API. Your phone keeps working normally — nothing changes.</p>
+            <ol>
+                <li>In your Meta app, go to <strong>WhatsApp &rarr; API Setup</strong></li>
+                <li>Click <strong>Add phone number</strong></li>
+                <li>Select <strong>"I have a WhatsApp Business app account"</strong></li>
+                <li>Enter your number and verify with the code or QR</li>
+            </ol>
+            <div class="callout green">Your existing chats and contacts stay intact. Up to 6 months of chat history will sync automatically once connected.</div>
+            <div class="field">
+                <label>Your WhatsApp Business phone number</label>
+                <input type="tel" id="inPhone" placeholder="e.g. 447700900123" oninput="validateStep2()">
+                <div class="hint">Digits only, include country code. This is the number you use daily.</div>
+            </div>
+            <div class="step-nav">
+                <button class="btn ghost sm" onclick="goStep(1)">&larr; Back</button>
+                <button class="btn sm" id="btn2" onclick="goStep(3)" disabled>Next &rarr;</button>
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step-card" id="s3">
+            <h2>Set up the webhook</h2>
+            <p class="desc">The webhook tells Meta where to send your message data. We'll set this up for you.</p>
+
+            <div class="live-status working" id="tunnelStatus">
+                <div class="spinner-sm"></div>
+                <span>Creating a secure tunnel to your computer...</span>
+            </div>
+
+            <div id="webhookInstructions" style="display:none">
+                <p style="font-size:14px;margin-bottom:12px">Go to <strong>WhatsApp &rarr; Configuration</strong> in your Meta app, click <strong>Edit</strong> under Webhook, and enter these two values:</p>
+
+                <label style="font-size:12px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:6px">CALLBACK URL</label>
+                <div class="copy-row">
+                    <span id="callbackDisplay">—</span>
+                    <button class="copy-btn" onclick="copyEl('callbackDisplay',this)">Copy</button>
+                </div>
+
+                <label style="font-size:12px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block;margin-top:16px;margin-bottom:6px">VERIFY TOKEN</label>
+                <div class="copy-row">
+                    <span id="tokenDisplay">—</span>
+                    <button class="copy-btn" onclick="copyEl('tokenDisplay',this)">Copy</button>
+                </div>
+
+                <p style="font-size:14px;margin-top:16px">Click <strong>Verify and Save</strong> in Meta, then subscribe to: <strong>messages</strong></p>
+            </div>
+
+            <div class="step-nav">
+                <button class="btn ghost sm" onclick="goStep(2)">&larr; Back</button>
+                <button class="btn sm" id="btn3" onclick="goStep(4)">I've done this &rarr;</button>
+            </div>
+        </div>
+
+        <!-- STEP 4: CONNECT (automated) -->
+        <div class="step-card" id="s4">
+            <h2>Connecting everything...</h2>
+            <p class="desc">Let's make sure it all works.</p>
+
+            <div class="live-status pending" id="ls1">
+                <div class="status-dot"></div>
+                <span>Save configuration</span>
+            </div>
+            <div class="live-status pending" id="ls2">
+                <div class="status-dot"></div>
+                <span>Test webhook connection</span>
+            </div>
+            <div class="live-status pending" id="ls3">
+                <div class="status-dot"></div>
+                <span>Check for incoming messages</span>
+            </div>
+
+            <div id="finalResult" style="display:none;margin-top:20px;text-align:center">
+                <div style="font-size:48px;margin-bottom:8px" id="finalEmoji"></div>
+                <h3 id="finalTitle" style="font-size:20px;margin-bottom:4px"></h3>
+                <p id="finalDesc" style="color:var(--text2);font-size:14px;margin-bottom:20px"></p>
+                <button class="btn" id="finalBtn" onclick="goToDashboard()" style="display:none">Open your dashboard &rarr;</button>
+            </div>
+
+            <div class="step-nav">
+                <button class="btn ghost sm" onclick="goStep(3)">&larr; Back</button>
+                <button class="btn sm" id="retryBtn" onclick="runConnect()" style="display:none">Retry</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ HOME SCREEN ═══ -->
+<div class="screen" id="scrHome">
+    <div class="logo"><svg><use href="#waIcon"/></svg></div>
+    <h1 class="hero">WhatsApp Meter</h1>
+    <p class="subtitle">Your personal response time dashboard.</p>
+
+    <div class="status-card" id="statusCard">
+        <div class="status-row"><span class="status-label">Status</span><span class="status-val" id="stStatus">Checking...</span></div>
+        <div class="status-row"><span class="status-label">Messages</span><span class="status-val" id="stMsgs">&mdash;</span></div>
+        <div class="status-row"><span class="status-label">Chats</span><span class="status-val" id="stChats">&mdash;</span></div>
+        <div class="status-row"><span class="status-label">Date Range</span><span class="status-val" id="stRange">&mdash;</span></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button class="btn" id="viewDashBtn" onclick="loadDashboard()" disabled>View Dashboard</button>
+        <button class="btn ghost sm" onclick="show('scrSetup');goStep(1)">Settings</button>
+    </div>
+
+    <div class="import-panel">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:10px;text-align:center">Import older .txt chat exports for data beyond the 6-month window:</p>
+        <div class="drop-zone" id="dropZone"><h3>Drop .txt files here</h3><span>or click to browse</span></div>
+        <input type="file" id="fileInput" multiple accept=".txt" style="display:none">
+        <div class="import-status" id="importStatus"></div>
+    </div>
+    <div class="privacy-pill"><svg><use href="#shieldIcon"/></svg> No message content is stored</div>
+</div>
+
+<!-- ═══ LOADING ═══ -->
+<div class="screen" id="scrLoading">
+    <div class="spinner"></div>
+    <p style="margin-top:16px;color:var(--text2)" id="loadMsg">Loading your data...</p>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="dashboard-wrap" id="dashWrap">
+    <div class="dash-header">
+        <div><h1><svg><use href="#waIcon"/></svg> WhatsApp Meter</h1><div class="sub" id="dashSub"></div></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="privacy-dash"><svg><use href="#shieldIcon"/></svg> No message content stored</div>
+            <button class="hdr-btn" onclick="location.reload()">Refresh</button>
+            <button class="hdr-btn" onclick="window.print()">Print</button>
+        </div>
+    </div>
+    <div class="filters">
+        <div class="fg"><label>Chat</label><select id="fChat" onchange="db.applyFilters()"><option value="all">All Chats</option></select></div>
+        <div class="fg"><label>From</label><input type="date" id="fStart" onchange="db.applyFilters()"></div>
+        <div class="fg"><label>To</label><input type="date" id="fEnd" onchange="db.applyFilters()"></div>
+    </div>
+    <div id="gradeArea"></div>
+    <section class="kpi-row" id="kpiRow"></section>
+    <section class="chart-row" id="cRow1"></section>
+    <section class="chart-row" id="cRow2"></section>
+    <section class="tbl-section" id="chatTable"></section>
+    <section class="tbl-section" id="contactTable"></section>
+    <div class="footer">WhatsApp Meter &mdash; 100% private. Powered by WhatsApp Business Cloud API.</div>
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function pct(a,p){if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);const i=(p/100)*(s.length-1);const lo=Math.floor(i),hi=Math.ceil(i);return lo===hi?s[lo]:s[lo]+(s[hi]-s[lo])*(i-lo)}
+function fmt(m){if(m<1)return Math.round(m*60)+'s';if(m<60)return Math.round(m)+'m';const h=Math.floor(m/60),r=Math.round(m%60);return r>0?h+'h '+r+'m':h+'h'}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('dashWrap').classList.remove('active');document.getElementById(id).classList.add('active')}
+
+let verifyToken='wameter_'+Math.random().toString(36).slice(2,14);
+
+// ═══════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════
+async function startup(){
+    try{
+        const r=await fetch('/api/config-status');
+        const d=await r.json();
+        if(d.configured){show('scrHome');checkStatus()}
+        else{show('scrWelcome')}
+    }catch(e){show('scrWelcome')}
+}
+startup();
+
+function startSetup(){show('scrSetup');goStep(1)}
+
+// ═══════════════════════════════════════════
+// SETUP WIZARD — NAVIGATION
+// ═══════════════════════════════════════════
+let curStep=1;
+function goStep(n){
+    curStep=n;
+    for(let i=1;i<=4;i++){
+        const dot=document.getElementById('d'+i),lab=document.getElementById('l'+i),card=document.getElementById('s'+i),line=document.getElementById('ln'+(i-1));
+        dot.className='p-dot'+(i===n?' active':i<n?' done':'');
+        lab.className='p-label'+(i===n?' active':i<n?' done':'');
+        if(i<n)dot.innerHTML='<svg style="width:20px;height:20px;fill:#fff"><use href="#checkIcon"/></svg>';
+        else dot.textContent=i;
+        card.className='step-card'+(i===n?' active':'');
+        if(line)line.className='p-line'+(i<=n?' done':'');
+    }
+    if(n===3)startTunnel();
+    if(n===4)runConnect();
+}
+
+// ═══════════════════════════════════════════
+// STEP VALIDATION
+// ═══════════════════════════════════════════
+function validateStep1(){
+    const v=document.getElementById('inSecret').value.trim();
+    const ok=v.length>=10;
+    document.getElementById('btn1').disabled=!ok;
+    document.getElementById('inSecret').className=ok?'ok':'';
+}
+function validateStep2(){
+    const v=document.getElementById('inPhone').value.trim().replace(/[^0-9]/g,'');
+    const ok=v.length>=7;
+    document.getElementById('btn2').disabled=!ok;
+    document.getElementById('inPhone').className=ok?'ok':'';
+}
+
+// ═══════════════════════════════════════════
+// STEP 3: AUTO-TUNNEL
+// ═══════════════════════════════════════════
+async function startTunnel(){
+    const ts=document.getElementById('tunnelStatus');
+    const ins=document.getElementById('webhookInstructions');
+    ts.style.display='flex';ins.style.display='none';
+    ts.className='live-status working';
+    ts.innerHTML='<div class="spinner-sm"></div><span>Creating a secure tunnel to your computer...</span>';
+
+    try{
+        const r=await fetch('/api/tunnel',{method:'POST'});
+        const d=await r.json();
+        if(d.url){
+            ts.className='live-status success';
+            ts.innerHTML='<div class="status-dot"></div><span>Tunnel active: '+esc(d.url)+'</span>';
+            document.getElementById('callbackDisplay').textContent=d.url+'/webhook';
+            document.getElementById('tokenDisplay').textContent=verifyToken;
+            ins.style.display='block';
+        }else{
+            throw new Error(d.error||'Could not create tunnel');
+        }
+    }catch(e){
+        ts.className='live-status error';
+        ts.innerHTML='<div class="status-dot"></div><span>Tunnel failed: '+esc(e.message)+'. You can use ngrok instead.</span>';
+        // Show manual fallback
+        document.getElementById('callbackDisplay').textContent='YOUR_NGROK_URL/webhook';
+        document.getElementById('tokenDisplay').textContent=verifyToken;
+        ins.style.display='block';
+    }
+}
+
+function copyEl(id,btn){
+    navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>{
+        btn.textContent='Copied!';btn.classList.add('ok');
+        setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok')},2000);
+    });
+}
+
+// ═══════════════════════════════════════════
+// STEP 4: AUTO-CONNECT
+// ═══════════════════════════════════════════
+async function runConnect(){
+    const ls1=document.getElementById('ls1');
+    const ls2=document.getElementById('ls2');
+    const ls3=document.getElementById('ls3');
+    const result=document.getElementById('finalResult');
+    result.style.display='none';
+    document.getElementById('retryBtn').style.display='none';
+    [ls1,ls2,ls3].forEach(el=>{el.className='live-status pending';el.innerHTML='<div class="status-dot"></div><span>'+el.querySelector('span').textContent+'</span>'});
+
+    // 1. Save config
+    ls1.className='live-status working';
+    ls1.innerHTML='<div class="spinner-sm"></div><span>Saving configuration...</span>';
+    try{
+        const phone=document.getElementById('inPhone').value.trim().replace(/[^0-9]/g,'');
+        const secret=document.getElementById('inSecret').value.trim();
+        const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,secret,verifyToken})});
+        const d=await r.json();
+        if(!d.ok)throw new Error(d.error);
+        ls1.className='live-status success';
+        ls1.innerHTML='<div class="status-dot"></div><span>Configuration saved</span>';
+    }catch(e){
+        ls1.className='live-status error';
+        ls1.innerHTML='<div class="status-dot"></div><span>Failed: '+esc(e.message)+'</span>';
+        showFinal(false,'Configuration error','Check your App Secret and try again.');return;
+    }
+
+    // 2. Test webhook
+    ls2.className='live-status working';
+    ls2.innerHTML='<div class="spinner-sm"></div><span>Waiting for Meta to verify webhook...</span>';
+
+    // Poll /api/webhook-status for up to 30s
+    let verified=false;
+    for(let i=0;i<15;i++){
+        try{
+            const r=await fetch('/api/webhook-status');
+            const d=await r.json();
+            if(d.verified){verified=true;break}
+        }catch(e){}
+        await new Promise(r=>setTimeout(r,2000));
+    }
+    if(verified){
+        ls2.className='live-status success';
+        ls2.innerHTML='<div class="status-dot"></div><span>Webhook verified by Meta</span>';
+    }else{
+        ls2.className='live-status error';
+        ls2.innerHTML='<div class="status-dot"></div><span>Webhook not verified yet — make sure you configured it in Meta</span>';
+    }
+
+    // 3. Check for messages
+    ls3.className='live-status working';
+    ls3.innerHTML='<div class="spinner-sm"></div><span>Checking for incoming messages...</span>';
+    let hasMsgs=false;
+    for(let i=0;i<10;i++){
+        try{
+            const r=await fetch('/api/stats');
+            const d=await r.json();
+            if(d.totalMessages>0){hasMsgs=true;break}
+        }catch(e){}
+        await new Promise(r=>setTimeout(r,2000));
+    }
+    if(hasMsgs){
+        ls3.className='live-status success';
+        ls3.innerHTML='<div class="status-dot"></div><span>Messages flowing!</span>';
+        showFinal(true,"You're all set!","WhatsApp Meter is connected and receiving data. Your 6-month history will sync in the background.");
+    }else{
+        ls3.className='live-status pending';
+        ls3.innerHTML='<div class="status-dot"></div><span>No messages yet — that\'s OK, they\'ll start arriving soon</span>';
+        showFinal(true,"Setup complete!","Your webhook is ready. Messages will start flowing when Meta completes the connection. You can also import .txt exports from the dashboard in the meantime.");
+    }
+}
+
+function showFinal(ok,title,desc){
+    const r=document.getElementById('finalResult');
+    r.style.display='block';
+    document.getElementById('finalEmoji').textContent=ok?'':'';
+    document.getElementById('finalTitle').textContent=title;
+    document.getElementById('finalDesc').textContent=desc;
+    document.getElementById('finalBtn').style.display=ok?'inline-block':'none';
+    document.getElementById('retryBtn').style.display=ok?'none':'inline-block';
+}
+
+function goToDashboard(){show('scrHome');checkStatus()}
+
+// ═══════════════════════════════════════════
+// HOME — STATUS
+// ═══════════════════════════════════════════
+async function checkStatus(){
+    try{
+        const r=await fetch('/api/stats');
+        const s=await r.json();
+        const has=s.totalMessages>0;
+        document.getElementById('stStatus').textContent=has?'Connected':'Waiting for data';
+        document.getElementById('stStatus').className='status-val '+(has?'live':'empty');
+        document.getElementById('stMsgs').textContent=has?s.totalMessages.toLocaleString():'0';
+        document.getElementById('stChats').textContent=has?s.totalChats.toLocaleString():'0';
+        if(s.earliest&&s.latest)document.getElementById('stRange').textContent=new Date(s.earliest*1000).toLocaleDateString()+' \u2192 '+new Date(s.latest*1000).toLocaleDateString();
+        document.getElementById('viewDashBtn').disabled=!has;
+    }catch(e){
+        document.getElementById('stStatus').textContent='Server offline';
+        document.getElementById('stStatus').className='status-val empty';
+    }
+}
+
+// ═══════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════
+const dz=document.getElementById('dropZone'),fi=document.getElementById('fileInput');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
+dz.addEventListener('dragleave',e=>{e.preventDefault();dz.classList.remove('drag-over')});
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');importFiles(e.dataTransfer.files)});
+dz.addEventListener('click',()=>{fi.value='';fi.click()});
+fi.addEventListener('change',()=>{if(fi.files.length)importFiles(fi.files)});
+async function importFiles(fl){
+    const files=Array.from(fl).filter(f=>f.name.toLowerCase().endsWith('.txt'));
+    if(!files.length){document.getElementById('importStatus').textContent='No .txt files found.';return}
+    const is=document.getElementById('importStatus');let total=0;
+    for(let i=0;i<files.length;i++){
+        is.textContent='Importing '+(i+1)+'/'+files.length+': '+files[i].name+'...';
+        try{
+            const text=await files[i].text();
+            const cn=files[i].name.replace(/\.txt$/i,'').replace(/^WhatsApp Chat with /i,'').replace(/^WhatsApp Chat - /i,'').replace(/_/g,' ').trim();
+            const r=await fetch('/api/import',{method:'POST',headers:{'Content-Type':'text/plain','X-Chat-Name':cn},body:text});
+            const j=await r.json();if(j.imported)total+=j.imported;
+        }catch(e){console.error(e)}
+    }
+    is.textContent='Imported '+total.toLocaleString()+' messages from '+files.length+' file'+(files.length>1?'s':'')+'.';
+    checkStatus();
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+async function loadDashboard(){
+    show('scrLoading');
+    try{
+        const r=await fetch('/api/messages');const d=await r.json();
+        if(!d.messages||!d.messages.length){alert('No data found.');show('scrHome');return}
+        const msgs=d.messages.map(m=>({date:new Date(m.timestamp*1000),sender:m.sender,chat:m.chat,direction:m.direction}));
+        msgs.sort((a,b)=>a.date-b.date);
+        const has=msgs.some(m=>m.direction==='in'||m.direction==='out');
+        if(has){launchDash(msgs,'Me');return}
+        const cs={};for(const m of msgs)(cs[m.chat]=cs[m.chat]||new Set()).add(m.sender);
+        const cc={};for(const[,senders]of Object.entries(cs))for(const s of senders)cc[s]=(cc[s]||0)+1;
+        const ranked=Object.entries(cc).sort((a,b)=>b[1]-a[1]);
+        const best=ranked[0],nc=Object.keys(cs).length;
+        if(nc>1&&best&&best[1]/nc>=.75){if(confirm('Are you "'+best[0]+'"?')){launchDash(msgs,best[0]);return}}
+        const name=prompt('Which name is you?\n\n'+ranked.slice(0,10).map(r=>'  '+r[0]+' ('+r[1]+' chats)').join('\n'));
+        if(name)launchDash(msgs,name);else show('scrHome');
+    }catch(e){alert('Error: '+e.message);show('scrHome')}
+}
+function launchDash(msgs,me){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('dashWrap').classList.add('active');
+    window.db=new Dash(msgs,computeResponses(msgs,me),me);
+}
+
+function computeResponses(msgs,me){
+    const bc={};for(const m of msgs)(bc[m.chat]=bc[m.chat]||[]).push(m);
+    const MAX=864e5,out=[];
+    for(const chat of Object.keys(bc)){const cm=bc[chat];for(let i=1;i<cm.length;i++){
+        const p=cm[i-1],c=cm[i];
+        if((c.sender===me||c.direction==='out')&&!(p.sender===me||p.direction==='out')){
+            const g=c.date-p.date;if(g>0&&g<MAX)out.push({to:p.sender,ms:g,min:g/6e4,date:c.date,hour:c.date.getHours(),dow:c.date.getDay(),chat})}}}
+    return out;
+}
+
+class Dash{
+    constructor(m,r,me){this.aM=m;this.aR=r;this.me=me;this.fR=r;this.fM=m;this.ch={};this.init()}
+    init(){document.getElementById('dashSub').textContent='Your responsiveness report';this.setupFilters();this.render()}
+    setupFilters(){
+        const ch=[...new Set(this.aM.map(m=>m.chat))].sort();
+        const cs=document.getElementById('fChat');cs.innerHTML='<option value="all">All Chats ('+ch.length+')</option>';
+        ch.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o)});
+        if(this.aM.length){document.getElementById('fStart').value=this.aM[0].date.toISOString().split('T')[0];document.getElementById('fEnd').value=this.aM[this.aM.length-1].date.toISOString().split('T')[0]}
+    }
+    applyFilters(){
+        const c=document.getElementById('fChat').value,s=document.getElementById('fStart').value,e=document.getElementById('fEnd').value;
+        const f=r=>{if(c!=='all'&&r.chat!==c)return false;if(s&&r.date<new Date(s))return false;if(e&&r.date>new Date(e+'T23:59:59'))return false;return true};
+        this.fR=this.aR.filter(f);this.fM=this.aM.filter(m=>{if(c!=='all'&&m.chat!==c)return false;if(s&&m.date<new Date(s))return false;if(e&&m.date>new Date(e+'T23:59:59'))return false;return true});
+        Object.values(this.ch).forEach(c=>c.destroy());this.ch={};this.render();
+    }
+    render(){this.rGrade();this.rKPIs();this.rCharts();this.rChatTbl();this.rContactTbl()}
+    rGrade(){
+        const t=this.fR.map(r=>r.min),med=t.length?pct(t,50):999;
+        let l,c,lb;
+        if(med<3){l='A+';c='var(--green)';lb='Lightning fast'}
+        else if(med<5){l='A';c='var(--green)';lb='Very responsive'}
+        else if(med<15){l='B';c='var(--teal)';lb='Solid response times'}
+        else if(med<30){l='C';c='var(--yellow)';lb='Average'}
+        else if(med<60){l='D';c='var(--red)';lb='Slow'}
+        else{l='F';c='var(--red)';lb='Very slow'}
+        document.getElementById('gradeArea').innerHTML='<div class="grade-card"><div class="grade-letter" style="color:'+c+'">'+l+'</div><div class="grade-label">'+lb+'</div><div style="margin-top:8px;font-size:13px;color:var(--text2)">Median: <strong>'+fmt(med)+'</strong> across '+t.length.toLocaleString()+' replies</div></div>';
+    }
+    rKPIs(){
+        const t=this.fR.map(r=>r.min),med=t.length?pct(t,50):0,avg=t.length?t.reduce((a,b)=>a+b,0)/t.length:0,p90=t.length?pct(t,90):0;
+        const fast=t.filter(x=>x<5).length,fp=t.length?((fast/t.length)*100).toFixed(0):0;
+        const my=this.fM.filter(m=>m.sender===this.me||m.direction==='out').length;
+        const ch=[...new Set(this.fR.map(r=>r.chat))].length;
+        document.getElementById('kpiRow').innerHTML=
+            '<div class="kpi g"><div class="kpi-label">Median</div><div class="kpi-val">'+fmt(med)+'</div><div class="kpi-sub">Typical reply speed</div></div>'+
+            '<div class="kpi t"><div class="kpi-label">Average</div><div class="kpi-val">'+fmt(avg)+'</div><div class="kpi-sub">'+t.length.toLocaleString()+' replies</div></div>'+
+            '<div class="kpi b"><div class="kpi-label">90th %ile</div><div class="kpi-val">'+fmt(p90)+'</div><div class="kpi-sub">90% faster than this</div></div>'+
+            '<div class="kpi g"><div class="kpi-label">Quick</div><div class="kpi-val">'+fp+'%</div><div class="kpi-sub">Under 5 min</div></div>'+
+            '<div class="kpi t"><div class="kpi-label">Messages</div><div class="kpi-val">'+my.toLocaleString()+'</div><div class="kpi-sub">'+ch+' chats</div></div>';
+    }
+    rCharts(){
+        document.getElementById('cRow1').innerHTML='<div class="chart-box"><h3>Weekly Trend</h3><canvas id="cT"></canvas></div><div class="chart-box"><h3>Distribution</h3><canvas id="cD"></canvas></div>';
+        document.getElementById('cRow2').innerHTML='<div class="chart-box"><h3>By Hour</h3><canvas id="cH"></canvas></div><div class="chart-box"><h3>By Day</h3><canvas id="cW"></canvas></div>';
+        this.mkT();this.mkD();this.mkH();this.mkW();
+    }
+    mkT(){const w={};for(const r of this.fR){const d=new Date(r.date);d.setDate(d.getDate()-d.getDay());const k=d.toISOString().split('T')[0];(w[k]=w[k]||[]).push(r.min)}const ks=Object.keys(w).sort();this.ch.t=new Chart(document.getElementById('cT').getContext('2d'),{type:'line',data:{labels:ks,datasets:[{label:'Median',data:ks.map(k=>pct(w[k],50)),borderColor:'#075e54',backgroundColor:'rgba(7,94,84,.1)',borderWidth:2,fill:true,tension:.3,pointRadius:2}]},options:cO('time',fmt)})}
+    mkD(){const bk=['<1m','1-5m','5-15m','15-30m','30m-1h','1-2h','2-4h','4h+'],lm=[1,5,15,30,60,120,240,Infinity],cn=Array(8).fill(0);for(const r of this.fR)for(let i=0;i<lm.length;i++)if(r.min<lm[i]){cn[i]++;break}this.ch.d=new Chart(document.getElementById('cD').getContext('2d'),{type:'bar',data:{labels:bk,datasets:[{data:cn,backgroundColor:['#25d366','#128c7e','#075e54','#34b7f1','#fbbc04','#e67e22','#ea4335','#9b59b6'],borderRadius:4}]},options:{...cO('category'),plugins:{legend:{display:false}}}})}
+    mkH(){const hd=Array.from({length:24},()=>[]);for(const r of this.fR)hd[r.hour].push(r.min);const lb=Array.from({length:24},(_,i)=>i+':00'),md=hd.map(a=>a.length?pct(a,50):0);this.ch.h=new Chart(document.getElementById('cH').getContext('2d'),{type:'bar',data:{labels:lb,datasets:[{data:md,backgroundColor:md.map(v=>v<5?'#25d366':v<15?'#fbbc04':'#ea4335'),borderRadius:3}]},options:{...cO('category',fmt),plugins:{legend:{display:false}}}})}
+    mkW(){const dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],dd=Array.from({length:7},()=>[]);for(const r of this.fR)dd[r.dow].push(r.min);this.ch.w=new Chart(document.getElementById('cW').getContext('2d'),{type:'bar',data:{labels:dn,datasets:[{data:dd.map(a=>a.length?pct(a,50):0),backgroundColor:'#128c7e',borderRadius:4}]},options:{...cO('category',fmt),plugins:{legend:{display:false}}}})}
+    rChatTbl(){const bc={};for(const r of this.fR)(bc[r.chat]=bc[r.chat]||[]).push(r.min);const rows=Object.entries(bc).map(([c,t])=>({c,med:pct(t,50),avg:t.reduce((a,b)=>a+b,0)/t.length,n:t.length,fp:t.filter(x=>x<5).length/t.length*100})).sort((a,b)=>a.med-b.med);let h='<h3>By Chat</h3>';if(rows.length){h+='<table class="dt"><thead><tr><th>#</th><th>Chat</th><th>Median</th><th>Avg</th><th>Replies</th><th>&lt;5m</th><th></th></tr></thead><tbody>';rows.forEach((r,i)=>{const cl=r.med<5?'fast':r.med<30?'med':'slow',lb=r.med<5?'Fast':r.med<30?'Avg':'Slow';h+='<tr><td>'+(i+1)+'</td><td><strong>'+esc(r.c)+'</strong></td><td>'+fmt(r.med)+'</td><td>'+fmt(r.avg)+'</td><td>'+r.n.toLocaleString()+'</td><td>'+r.fp.toFixed(0)+'%</td><td><span class="badge '+cl+'">'+lb+'</span></td></tr>'});h+='</tbody></table>'}document.getElementById('chatTable').innerHTML=h}
+    rContactTbl(){const bc={};for(const r of this.fR)(bc[r.to]=bc[r.to]||[]).push(r.min);const rows=Object.entries(bc).map(([n,t])=>({n,med:pct(t,50),avg:t.reduce((a,b)=>a+b,0)/t.length,ct:t.length,fp:t.filter(x=>x<5).length/t.length*100})).sort((a,b)=>a.med-b.med);let h='<h3>Fastest Replies To</h3>';if(rows.length){h+='<table class="dt"><thead><tr><th>#</th><th>Contact</th><th>Median</th><th>Avg</th><th>Replies</th><th>&lt;5m</th><th></th></tr></thead><tbody>';rows.forEach((r,i)=>{const cl=r.med<5?'fast':r.med<30?'med':'slow',lb=r.med<5?'Fast':r.med<30?'Avg':'Slow';h+='<tr><td>'+(i+1)+'</td><td><strong>'+esc(r.n)+'</strong></td><td>'+fmt(r.med)+'</td><td>'+fmt(r.avg)+'</td><td>'+r.ct.toLocaleString()+'</td><td>'+r.fp.toFixed(0)+'%</td><td><span class="badge '+cl+'">'+lb+'</span></td></tr>'});h+='</tbody></table>'}document.getElementById('contactTable').innerHTML=h}
+}
+function cO(xT,yF){return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16,font:{size:12}}},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y??ctx.parsed;return(ctx.dataset.label||'Value')+': '+(yF?yF(v):v)}}}},scales:{x:{grid:{display:false},type:xT==='time'?'time':'category',...(xT==='time'?{time:{unit:'week',tooltipFormat:'MMM d, yyyy'}}:{})},y:{beginAtZero:true,grid:{color:'#f0f0f0'},ticks:yF?{callback:yF}:{}}}}}
+</script>
+</body>
+</html>

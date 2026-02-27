@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Meter — See how fast you really reply</title>
+<meta name="description" content="Personal response-time analytics for WhatsApp. See how quickly you reply across all your chats. Free, private, no message content stored.">
+<style>
+/* ═══════════════════════════════════════════ */
+/* RESET + BASE                                */
+/* ═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#25D366;--green-dark:#128C7E;--green-light:#dcf8c6;
+  --bg:#fafafa;--card:#fff;--text:#1a1a1a;--muted:#666;--light:#999;
+  --radius:16px;--shadow:0 2px 20px rgba(0,0,0,.06);
+  --max:1080px;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;
+  overflow-x:hidden;
+}
+a{color:var(--green-dark);text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ═══════════════════════════════════════════ */
+/* NAV                                         */
+/* ═══════════════════════════════════════════ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(255,255,255,.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.nav-inner{
+  max-width:var(--max);margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+}
+.nav-logo{
+  display:flex;align-items:center;gap:10px;
+  font-weight:700;font-size:18px;color:var(--text);
+}
+.nav-logo svg{width:28px;height:28px}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{color:var(--muted);font-size:14px;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{
+  background:var(--green);color:#fff!important;
+  padding:8px 20px;border-radius:20px;font-weight:600;font-size:14px;
+  transition:transform .15s,box-shadow .15s;
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,211,102,.3)}
+
+/* ═══════════════════════════════════════════ */
+/* HERO                                        */
+/* ═══════════════════════════════════════════ */
+.hero{
+  padding:140px 24px 80px;text-align:center;
+  background:linear-gradient(180deg,#f0faf3 0%,var(--bg) 100%);
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#e8f8ee;color:var(--green-dark);
+  padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;
+  margin-bottom:24px;
+}
+.hero-badge svg{width:14px;height:14px}
+.hero h1{
+  font-size:clamp(36px,5.5vw,64px);font-weight:800;
+  line-height:1.1;letter-spacing:-.02em;
+  max-width:720px;margin:0 auto 20px;
+}
+.hero h1 span{
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{
+  font-size:clamp(16px,2vw,20px);color:var(--muted);
+  max-width:540px;margin:0 auto 40px;line-height:1.5;
+}
+.hero-buttons{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 32px;border-radius:14px;font-weight:700;font-size:17px;
+  transition:transform .15s,box-shadow .15s;cursor:pointer;border:none;
+}
+.btn-primary{
+  background:var(--green);color:#fff;
+  box-shadow:0 4px 20px rgba(37,211,102,.25);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(37,211,102,.35)}
+.btn-secondary{
+  background:var(--card);color:var(--text);
+  border:1.5px solid #e0e0e0;
+}
+.btn-secondary:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.btn svg{width:20px;height:20px}
+.hero-sub{
+  margin-top:16px;font-size:13px;color:var(--light);
+  display:flex;gap:24px;justify-content:center;flex-wrap:wrap;
+}
+.hero-sub span{display:flex;align-items:center;gap:5px}
+.hero-sub svg{width:14px;height:14px;color:var(--green)}
+
+/* ═══════════════════════════════════════════ */
+/* MOCKUP                                      */
+/* ═══════════════════════════════════════════ */
+.mockup-section{
+  padding:0 24px 80px;
+  max-width:var(--max);margin:0 auto;
+}
+.mockup-frame{
+  background:var(--card);border-radius:20px;
+  box-shadow:0 8px 60px rgba(0,0,0,.08);
+  overflow:hidden;position:relative;
+}
+.mockup-bar{
+  height:40px;background:#f5f5f5;display:flex;align-items:center;
+  padding:0 16px;gap:8px;
+}
+.mockup-dot{width:12px;height:12px;border-radius:50%;background:#ddd}
+.mockup-dot:nth-child(1){background:#ff5f57}
+.mockup-dot:nth-child(2){background:#febc2e}
+.mockup-dot:nth-child(3){background:#28c840}
+.mockup-body{
+  padding:48px;min-height:400px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:24px;
+}
+.mock-grade{
+  width:120px;height:120px;border-radius:50%;
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:48px;font-weight:800;
+  box-shadow:0 8px 32px rgba(37,211,102,.3);
+}
+.mock-stats{
+  display:flex;gap:40px;flex-wrap:wrap;justify-content:center;
+}
+.mock-stat{text-align:center}
+.mock-stat .val{font-size:32px;font-weight:800;color:var(--text)}
+.mock-stat .label{font-size:13px;color:var(--muted);margin-top:2px}
+.mock-bars{display:flex;gap:4px;align-items:end;height:80px;margin-top:8px}
+.mock-bar{
+  width:24px;border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,var(--green),var(--green-dark));
+  animation:barGrow 1.5s ease-out both;
+}
+@keyframes barGrow{from{height:0}to{height:var(--h)}}
+
+/* ═══════════════════════════════════════════ */
+/* HOW IT WORKS                                */
+/* ═══════════════════════════════════════════ */
+.how{padding:80px 24px;max-width:var(--max);margin:0 auto}
+.section-label{
+  display:inline-flex;align-items:center;gap:6px;
+  color:var(--green-dark);font-weight:700;font-size:14px;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;
+}
+.how h2{
+  font-size:clamp(28px,4vw,44px);font-weight:800;
+  line-height:1.15;margin-bottom:56px;max-width:500px;
+}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:32px}
+.step{
+  background:var(--card);border-radius:var(--radius);
+  padding:32px;box-shadow:var(--shadow);
+  transition:transform .2s,box-shadow .2s;
+}
+.step:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,.1)}
+.step-num{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,var(--green),var(--green-dark));
+  color:#fff;font-weight:800;font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:16px;
+}
+.step h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.step p{font-size:15px;color:var(--muted);line-height:1.5}
+.step-time{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:12px;padding:4px 12px;border-radius:8px;
+  background:#f0faf3;color:var(--green-dark);
+  font-size:12px;font-weight:600;
+}
+.step-time svg{width:12px;height:12px}
+
+/* ═══════════════════════════════════════════ */
+/* FEATURES                                    */
+/* ═══════════════════════════════════════════ */
+.features{
+  padding:80px 24px;
+  background:linear-gradient(180deg,var(--bg) 0%,#f0faf3 50%,var(--bg) 100%);
+}
+.features-inner{max-width:var(--max);margin:0 auto;text-align:center}
+.features h2{
+  font-size:clamp(28px,4vw,44px);font-weight:800;
+  line-height:1.15;margin-bottom:56px;
+}
+.feature-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:24px;text-align:left;
+}
+.feature{
+  background:var(--card);border-radius:var(--radius);
+  padding:28px;box-shadow:var(--shadow);
+}
+.feature-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:14px;font-size:22px;
+}
+.feature h3{font-size:16px;font-weight:700;margin-bottom:6px}
+.feature p{font-size:14px;color:var(--muted);line-height:1.5}
+
+/* ═══════════════════════════════════════════ */
+/* PRIVACY                                     */
+/* ═══════════════════════════════════════════ */
+.privacy{padding:80px 24px;max-width:var(--max);margin:0 auto}
+.privacy-card{
+  background:var(--card);border-radius:20px;padding:48px;
+  box-shadow:var(--shadow);
+  display:grid;grid-template-columns:1fr 1fr;gap:48px;
+  align-items:center;
+}
+.privacy h2{font-size:clamp(24px,3.5vw,36px);font-weight:800;margin-bottom:16px}
+.privacy p{font-size:16px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+.privacy-checks{list-style:none;display:flex;flex-direction:column;gap:12px}
+.privacy-checks li{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:15px;color:var(--text);line-height:1.4;
+}
+.privacy-checks svg{width:20px;height:20px;color:var(--green);flex-shrink:0;margin-top:2px}
+.privacy-visual{
+  display:flex;flex-direction:column;gap:12px;
+}
+.pv-row{
+  display:flex;align-items:center;gap:12px;
+  background:#f8f8f8;border-radius:12px;padding:14px 18px;
+}
+.pv-icon{font-size:20px;flex-shrink:0;width:32px;text-align:center}
+.pv-label{font-size:14px;font-weight:600}
+.pv-status{margin-left:auto;font-size:12px;font-weight:700;border-radius:6px;padding:3px 10px}
+.pv-stored{background:#e8f8ee;color:var(--green-dark)}
+.pv-never{background:#fff0f0;color:#d32f2f}
+
+/* ═══════════════════════════════════════════ */
+/* DOWNLOAD CTA                                */
+/* ═══════════════════════════════════════════ */
+.download{
+  padding:100px 24px;text-align:center;
+  background:linear-gradient(180deg,var(--bg),#f0faf3);
+}
+.download h2{
+  font-size:clamp(28px,4vw,44px);font-weight:800;
+  line-height:1.15;margin-bottom:16px;
+}
+.download>p{
+  font-size:18px;color:var(--muted);max-width:480px;
+  margin:0 auto 40px;
+}
+.download-buttons{
+  display:flex;gap:16px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:24px;
+}
+.download .hero-sub{margin-top:24px}
+
+/* ═══════════════════════════════════════════ */
+/* FAQ                                         */
+/* ═══════════════════════════════════════════ */
+.faq{padding:80px 24px;max-width:720px;margin:0 auto}
+.faq h2{
+  font-size:clamp(28px,4vw,36px);font-weight:800;
+  text-align:center;margin-bottom:48px;
+}
+.faq-item{
+  border-bottom:1px solid #eee;padding:20px 0;
+}
+.faq-q{
+  font-size:16px;font-weight:700;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:16px;
+}
+.faq-q svg{
+  width:20px;height:20px;color:var(--muted);flex-shrink:0;
+  transition:transform .2s;
+}
+.faq-item.open .faq-q svg{transform:rotate(45deg)}
+.faq-a{
+  max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;
+  font-size:15px;color:var(--muted);line-height:1.6;
+}
+.faq-item.open .faq-a{max-height:300px;padding-top:12px}
+
+/* ═══════════════════════════════════════════ */
+/* FOOTER                                      */
+/* ═══════════════════════════════════════════ */
+footer{
+  padding:40px 24px;text-align:center;
+  border-top:1px solid #eee;
+  font-size:13px;color:var(--light);
+}
+footer a{color:var(--muted)}
+
+/* ═══════════════════════════════════════════ */
+/* RESPONSIVE                                  */
+/* ═══════════════════════════════════════════ */
+@media(max-width:768px){
+  .nav-links a:not(.nav-cta){display:none}
+  .privacy-card{grid-template-columns:1fr;gap:32px}
+  .mockup-body{padding:32px 20px}
+  .mock-stats{gap:24px}
+}
+@media(max-width:480px){
+  .hero-buttons{flex-direction:column;align-items:center}
+  .btn{width:100%;max-width:320px;justify-content:center}
+  .download-buttons{flex-direction:column;align-items:center}
+}
+
+/* ═══════════════════════════════════════════ */
+/* BIGGER DOWNLOAD BUTTON + TEXT LINKS         */
+/* ═══════════════════════════════════════════ */
+.btn-xl{padding:18px 44px;font-size:19px;border-radius:16px}
+.btn-text{
+  background:none;border:none;color:var(--muted);
+  font-size:14px;cursor:pointer;padding:4px 0;
+  border-bottom:1px dashed #ccc;transition:color .2s;
+}
+.btn-text:hover{color:var(--green-dark);border-color:var(--green-dark)}
+
+/* ═══════════════════════════════════════════ */
+/* DOWNLOAD OVERLAY                            */
+/* ═══════════════════════════════════════════ */
+.dl-overlay{
+  position:fixed;inset:0;z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeIn .2s ease;
+}
+.dl-overlay-bg{
+  position:absolute;inset:0;background:rgba(0,0,0,.45);
+  backdrop-filter:blur(6px);
+}
+.dl-card{
+  position:relative;background:#fff;border-radius:24px;
+  padding:48px 40px;max-width:480px;width:90%;
+  box-shadow:0 20px 60px rgba(0,0,0,.15);
+  text-align:center;z-index:1;
+  animation:slideUp .3s ease;
+}
+.dl-close{
+  position:absolute;top:16px;right:20px;
+  background:none;border:none;font-size:28px;color:#ccc;
+  cursor:pointer;line-height:1;transition:color .2s;
+}
+.dl-close:hover{color:#666}
+.dl-anim{margin-bottom:20px;display:flex;justify-content:center}
+.dl-spinner{animation:none}
+.dl-spin-arc{animation:spinArc 1s linear infinite;transform-origin:center}
+@keyframes spinArc{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.dl-card h3{font-size:22px;font-weight:700;margin-bottom:8px}
+.dl-sub{font-size:14px;color:var(--muted);line-height:1.5}
+.dl-sub a{color:var(--green-dark);text-decoration:underline}
+.dl-checkmark{margin-bottom:16px;display:flex;justify-content:center}
+.dl-check-path{
+  stroke-dasharray:40;stroke-dashoffset:40;
+  animation:checkDraw .4s ease .2s forwards;
+}
+@keyframes checkDraw{to{stroke-dashoffset:0}}
+.dl-next-steps{
+  text-align:left;display:flex;flex-direction:column;gap:16px;
+}
+.dl-next-step{
+  display:flex;gap:14px;align-items:flex-start;
+  background:#f8f8f8;border-radius:14px;padding:16px 18px;
+}
+.dl-next-num{
+  width:32px;height:32px;border-radius:10px;flex-shrink:0;
+  background:var(--green);color:#fff;font-weight:800;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+}
+.dl-next-step strong{font-size:15px;display:block;margin-bottom:2px}
+.dl-next-step p{font-size:13px;color:var(--muted);margin:0;line-height:1.4}
+</style>
+</head>
+<body>
+
+<!-- ═══════ NAV ═══════ -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      WhatsApp Meter
+    </div>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+      <a href="#download" class="nav-cta" id="nav-dl-cta">Download Free</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<section class="hero">
+  <div class="hero-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    100% free &amp; private — your data never leaves your computer
+  </div>
+
+  <h1>See how fast you <span>really reply</span> on WhatsApp</h1>
+  <p>Personal response-time analytics for your WhatsApp chats. One-click install, automatic setup, beautiful dashboard. No message content is ever stored.</p>
+
+  <div class="hero-buttons">
+    <button class="btn btn-primary" id="hero-dl-btn" onclick="startDownload()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="hero-dl-label">Download for Mac</span>
+    </button>
+    <a href="#how" class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      See how it works
+    </a>
+  </div>
+
+  <div class="hero-sub">
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Mac, Windows &amp; Linux
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      No sign-up needed
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Setup in under 5 minutes
+    </span>
+  </div>
+</section>
+
+<!-- ═══════ MOCKUP ═══════ -->
+<section class="mockup-section">
+  <div class="mockup-frame">
+    <div class="mockup-bar">
+      <div class="mockup-dot"></div>
+      <div class="mockup-dot"></div>
+      <div class="mockup-dot"></div>
+    </div>
+    <div class="mockup-body">
+      <div class="mock-grade">A</div>
+      <div class="mock-stats">
+        <div class="mock-stat">
+          <div class="val">4m 12s</div>
+          <div class="label">Median reply time</div>
+        </div>
+        <div class="mock-stat">
+          <div class="val">2,847</div>
+          <div class="label">Messages tracked</div>
+        </div>
+        <div class="mock-stat">
+          <div class="val">93%</div>
+          <div class="label">Replied under 15 min</div>
+        </div>
+      </div>
+      <div class="mock-bars">
+        <div class="mock-bar" style="--h:35px;animation-delay:.1s"></div>
+        <div class="mock-bar" style="--h:50px;animation-delay:.15s"></div>
+        <div class="mock-bar" style="--h:70px;animation-delay:.2s"></div>
+        <div class="mock-bar" style="--h:80px;animation-delay:.25s"></div>
+        <div class="mock-bar" style="--h:60px;animation-delay:.3s"></div>
+        <div class="mock-bar" style="--h:45px;animation-delay:.35s"></div>
+        <div class="mock-bar" style="--h:55px;animation-delay:.4s"></div>
+        <div class="mock-bar" style="--h:75px;animation-delay:.45s"></div>
+        <div class="mock-bar" style="--h:65px;animation-delay:.5s"></div>
+        <div class="mock-bar" style="--h:40px;animation-delay:.55s"></div>
+        <div class="mock-bar" style="--h:50px;animation-delay:.6s"></div>
+        <div class="mock-bar" style="--h:30px;animation-delay:.65s"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ HOW IT WORKS ═══════ -->
+<section class="how" id="how">
+  <div class="section-label">How it works</div>
+  <h2>Up and running in 3 simple steps</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Download &amp; open</h3>
+      <p>Download the app for your platform. Double-click to install. That's it — no terminal, no command line, no technical knowledge needed.</p>
+      <div class="step-time">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        30 seconds
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Follow the setup wizard</h3>
+      <p>The app walks you through connecting your WhatsApp Business account step by step, with visual guides and live confirmation at each stage. No copy-pasting tokens.</p>
+      <div class="step-time">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        3–4 minutes
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>See your dashboard</h3>
+      <p>Your response-time grade, trends, hourly patterns, and per-chat breakdown appear automatically. Historical data syncs in the background — up to 6 months of chats.</p>
+      <div class="step-time">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Instant
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FEATURES ═══════ -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="section-label">Features</div>
+    <h2>Everything you need, nothing you don't</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="feature-icon" style="background:#e8f8ee">&#x1F3C6;</div>
+        <h3>Responsiveness grade</h3>
+        <p>Get a letter grade (A+ to F) based on your median reply time across all conversations.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:#e8f0ff">&#x1F4C8;</div>
+        <h3>Trend analysis</h3>
+        <p>See how your response time changes over days, weeks, and months. Spot patterns and improvements.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:#fff3e0">&#x23F0;</div>
+        <h3>Hourly heatmap</h3>
+        <p>Discover when you're fastest and slowest. Morning person or night owl — the data tells all.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:#fce4ec">&#x1F4AC;</div>
+        <h3>Per-chat breakdown</h3>
+        <p>See your reply speed for each conversation. Find out who you respond to quickest.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:#f3e5f5">&#x1F4E5;</div>
+        <h3>Import old chats</h3>
+        <p>Drag and drop WhatsApp .txt exports to analyse messages beyond the 6-month auto-sync window.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:#e0f2f1">&#x1F310;</div>
+        <h3>Auto-tunnel</h3>
+        <p>No ngrok, no Cloudflare, no port forwarding. The app automatically creates a secure public URL.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PRIVACY ═══════ -->
+<section class="privacy" id="privacy">
+  <div class="privacy-card">
+    <div>
+      <div class="section-label">Privacy first</div>
+      <h2>Your messages stay yours. Always.</h2>
+      <p>WhatsApp Meter only stores timestamps and sender IDs. Your actual message content is never recorded, never transmitted, and never touches any server.</p>
+      <ul class="privacy-checks">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          Everything runs locally on your computer
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          No cloud accounts, no sign-ups, no data sharing
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          Open-source — read every line of code yourself
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          Database stored only on your machine
+        </li>
+      </ul>
+    </div>
+    <div class="privacy-visual">
+      <div class="pv-row">
+        <div class="pv-icon">&#x23F0;</div>
+        <div class="pv-label">Timestamps</div>
+        <div class="pv-status pv-stored">Stored locally</div>
+      </div>
+      <div class="pv-row">
+        <div class="pv-icon">&#x1F464;</div>
+        <div class="pv-label">Sender ID</div>
+        <div class="pv-status pv-stored">Stored locally</div>
+      </div>
+      <div class="pv-row">
+        <div class="pv-icon">&#x2194;&#xFE0F;</div>
+        <div class="pv-label">Direction (in/out)</div>
+        <div class="pv-status pv-stored">Stored locally</div>
+      </div>
+      <div class="pv-row" style="border:2px solid #ffcdd2">
+        <div class="pv-icon">&#x1F4DD;</div>
+        <div class="pv-label">Message text</div>
+        <div class="pv-status pv-never">Never stored</div>
+      </div>
+      <div class="pv-row" style="border:2px solid #ffcdd2">
+        <div class="pv-icon">&#x1F4F7;</div>
+        <div class="pv-label">Photos &amp; media</div>
+        <div class="pv-status pv-never">Never stored</div>
+      </div>
+      <div class="pv-row" style="border:2px solid #ffcdd2">
+        <div class="pv-icon">&#x2714;&#xFE0F;</div>
+        <div class="pv-label">Read receipts</div>
+        <div class="pv-status pv-never">Never stored</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ DOWNLOAD ═══════ -->
+<section class="download" id="download">
+  <div class="section-label">Get started</div>
+  <h2>Download WhatsApp Meter</h2>
+  <p>Free, private, no sign-up. Works on Mac, Windows, and Linux.</p>
+
+  <!-- Primary auto-detected button -->
+  <div class="download-buttons" style="margin-bottom:12px">
+    <button class="btn btn-primary btn-xl" id="dl-primary" onclick="startDownload()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="dl-primary-label">Download for Mac</span>
+    </button>
+  </div>
+
+  <!-- Secondary: other platforms -->
+  <div id="dl-others" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">
+    <button class="btn-text" id="dl-alt1" onclick="startDownload('win')">Also available for Windows</button>
+    <span style="color:#ccc">|</span>
+    <button class="btn-text" id="dl-alt2" onclick="startDownload('linux')">Linux</button>
+  </div>
+
+  <div class="hero-sub">
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      No sign-up required
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Under 50 MB
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Requires WhatsApp Business
+    </span>
+  </div>
+</section>
+
+<!-- ═══════ DOWNLOAD STARTED OVERLAY ═══════ -->
+<div id="dl-overlay" class="dl-overlay" style="display:none">
+  <div class="dl-overlay-bg" onclick="closeDlOverlay()"></div>
+  <div class="dl-card">
+    <button class="dl-close" onclick="closeDlOverlay()" aria-label="Close">&times;</button>
+
+    <!-- STATE 1: downloading -->
+    <div id="dl-state-downloading" class="dl-state">
+      <div class="dl-anim">
+        <svg viewBox="0 0 64 64" width="64" height="64" class="dl-spinner">
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#e0e0e0" stroke-width="5"/>
+          <circle cx="32" cy="32" r="28" fill="none" stroke="var(--green)" stroke-width="5" stroke-dasharray="120 999" stroke-linecap="round" class="dl-spin-arc"/>
+        </svg>
+      </div>
+      <h3>Downloading <span id="dl-filename">WhatsApp-Meter.dmg</span>...</h3>
+      <p class="dl-sub">Your download should start automatically.<br><a href="#" id="dl-manual-link">Click here if it doesn't start.</a></p>
+    </div>
+
+    <!-- STATE 2: what to do next -->
+    <div id="dl-state-next" class="dl-state" style="display:none">
+      <div class="dl-checkmark">
+        <svg viewBox="0 0 52 52" width="56" height="56"><circle cx="26" cy="26" r="25" fill="var(--green)"/><path fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M14.1 27.2l7.1 7.2 16.7-16.8" class="dl-check-path"/></svg>
+      </div>
+      <h3>Download complete</h3>
+      <p style="color:var(--muted);margin-bottom:24px">Now just follow these 2 steps:</p>
+
+      <div class="dl-next-steps">
+        <div class="dl-next-step">
+          <div class="dl-next-num">1</div>
+          <div>
+            <strong id="dl-install-title">Open the .dmg file</strong>
+            <p id="dl-install-desc">Double-click the downloaded file and drag WhatsApp Meter to your Applications folder.</p>
+          </div>
+        </div>
+        <div class="dl-next-step">
+          <div class="dl-next-num">2</div>
+          <div>
+            <strong>Launch &amp; follow the wizard</strong>
+            <p>Open WhatsApp Meter from Applications. The setup wizard will walk you through everything — takes about 4 minutes.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:24px;width:100%" onclick="closeDlOverlay()">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ FAQ ═══════ -->
+<section class="faq" id="faq">
+  <h2>Frequently asked questions</h2>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      Do I need the regular WhatsApp or WhatsApp Business?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">You need <strong>WhatsApp Business</strong> (the free app with a briefcase icon). The regular WhatsApp app doesn't support the Cloud API that WhatsApp Meter uses. If you're currently using regular WhatsApp, you can migrate to WhatsApp Business without losing any chats — it's a free, one-time switch.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      Will this affect how my WhatsApp works?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Not at all. WhatsApp Meter uses the "Coexistence" feature, which means your WhatsApp Business app continues working exactly as before. The app just listens to message events in the background — it doesn't send messages or change any settings on your phone.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      Can other people see my response times?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">No. Everything stays on your computer. There are no accounts, no cloud sync, no sharing features. Your data is yours alone — it's stored in a local database file that only you can access.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      Does it actually read my messages?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">No. WhatsApp Meter only records timestamps and sender information. The actual message text, photos, voice notes, and all other content are completely ignored. You can verify this yourself — the code is open-source.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      What's a Meta Developer account? Is it hard to set up?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">It's a free account at developers.facebook.com — you just log in with your existing Facebook account. The setup wizard in the app walks you through creating a "WhatsApp App" there step by step, with screenshots and instructions for each click. The whole process takes about 3–4 minutes.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      How far back does the data go?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">The Cloud API's Coexistence feature auto-syncs up to 6 months of message history. For older data, you can export chats from WhatsApp as .txt files and import them into the app — just drag and drop.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+      Does the app need to stay running?
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="faq-a">Yes, the app runs quietly in your system tray (the small icons area near your clock). When you close the window, it minimises to the tray so the webhook listener stays active and keeps collecting data. You can quit it from the tray icon whenever you want.</div>
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer>
+  <p>WhatsApp Meter is an open-source project. Not affiliated with WhatsApp or Meta. <a href="https://github.com/emekafh/whatsapp-meter" target="_blank">GitHub</a></p>
+</footer>
+
+<!-- ═══════ SCRIPTS ═══════ -->
+<script>
+// ═══════════════════════════════════════════
+// CONFIGURATION — update these when you publish releases
+// ═══════════════════════════════════════════
+//
+// Option A: Direct file URLs (e.g. from GitHub Releases, S3, your own CDN)
+//   Set each to the direct download URL for that platform's installer.
+//
+// Option B: GitHub Releases (recommended)
+//   Set GITHUB_REPO and leave the individual URLs empty.
+//   The download button will fetch the latest release from GitHub
+//   and find the right file automatically.
+//
+// ┌─────────────────────────────────────────────────┐
+// │  SET YOUR GITHUB REPO HERE TO ENABLE DOWNLOADS  │
+// └─────────────────────────────────────────────────┘
+const GITHUB_REPO = 'emekafh/whatsapp-meter';
+//
+// That's it! Once you push a version tag (git tag v1.0.0 && git push --tags),
+// GitHub Actions will build the .dmg/.exe/.AppImage and the buttons below
+// will automatically find and serve the latest release files.
+//
+// Or set direct URLs if you're hosting files somewhere else:
+const RELEASE_URLS = {
+  mac:   '', // leave empty to use GitHub Releases auto-detection
+  win:   '',
+  linux: '',
+};
+
+// ═══════════════════════════════════════════
+// PLATFORM DETECTION
+// ═══════════════════════════════════════════
+const PLATFORMS = {
+  mac:   { label: 'Download for Mac',     file: 'WhatsApp-Meter.dmg',          exts: ['.dmg'],              installTitle: 'Open the .dmg', installDesc: 'Double-click the downloaded file, then double-click "Start WhatsApp Meter" inside. The setup wizard opens in your browser automatically.' },
+  win:   { label: 'Download for Windows', file: 'WhatsApp-Meter-Windows.zip',  exts: ['.zip', '.exe'],      installTitle: 'Extract and run', installDesc: 'Unzip the downloaded file, then double-click "Start_WhatsApp_Meter". The setup wizard opens in your browser automatically.' },
+  linux: { label: 'Download for Linux',   file: 'WhatsApp-Meter-Linux.tar.gz', exts: ['.tar.gz', '.AppImage'], installTitle: 'Extract and run', installDesc: 'Extract the archive, then run ./start.sh. The setup wizard opens in your browser automatically.' },
+};
+
+function detectPlatform() {
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('mac')) return 'mac';
+  if (ua.includes('win')) return 'win';
+  if (ua.includes('linux')) return 'linux';
+  return 'mac'; // default
+}
+
+const userPlatform = detectPlatform();
+
+// Set button labels
+document.getElementById('hero-dl-label').textContent = PLATFORMS[userPlatform].label;
+document.getElementById('dl-primary-label').textContent = PLATFORMS[userPlatform].label;
+
+// Set "also available for" links
+const others = Object.keys(PLATFORMS).filter(p => p !== userPlatform);
+const alt1 = document.getElementById('dl-alt1');
+const alt2 = document.getElementById('dl-alt2');
+alt1.textContent = 'Also available for ' + (others[0] === 'mac' ? 'Mac' : others[0] === 'win' ? 'Windows' : 'Linux');
+alt1.onclick = () => startDownload(others[0]);
+alt2.textContent = (others[1] === 'mac' ? 'Mac' : others[1] === 'win' ? 'Windows' : 'Linux');
+alt2.onclick = () => startDownload(others[1]);
+
+// Nav CTA also triggers download
+document.querySelector('.nav-cta').onclick = (e) => { e.preventDefault(); startDownload(); };
+
+// ═══════════════════════════════════════════
+// DOWNLOAD FLOW
+// ═══════════════════════════════════════════
+async function getDownloadUrl(platform) {
+  // 1) Check for direct URL first
+  if (RELEASE_URLS[platform]) return RELEASE_URLS[platform];
+
+  // 2) Try GitHub Releases API
+  if (GITHUB_REPO) {
+    try {
+      const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+      if (resp.ok) {
+        const release = await resp.json();
+        const exts = PLATFORMS[platform].exts || [];
+        for (const asset of release.assets || []) {
+          for (const ext of exts) {
+            if (asset.name.toLowerCase().endsWith(ext)) return asset.browser_download_url;
+          }
+        }
+      }
+    } catch (e) { /* fall through */ }
+  }
+
+  // 3) No URL available
+  return null;
+}
+
+async function startDownload(platform) {
+  platform = platform || userPlatform;
+  const pl = PLATFORMS[platform];
+  const overlay = document.getElementById('dl-overlay');
+  const stateDownloading = document.getElementById('dl-state-downloading');
+  const stateNext = document.getElementById('dl-state-next');
+
+  // Set filenames in overlay
+  document.getElementById('dl-filename').textContent = pl.file;
+  document.getElementById('dl-install-title').textContent = pl.installTitle;
+  document.getElementById('dl-install-desc').textContent = pl.installDesc;
+
+  // Show overlay in "downloading" state
+  stateDownloading.style.display = '';
+  stateNext.style.display = 'none';
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // Try to get the real download URL
+  const url = await getDownloadUrl(platform);
+
+  if (url) {
+    // Trigger the actual download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pl.file;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    document.getElementById('dl-manual-link').href = url;
+
+    // After a delay, show the "what to do next" state
+    setTimeout(() => {
+      stateDownloading.style.display = 'none';
+      stateNext.style.display = '';
+    }, 2500);
+  } else {
+    // No release URL configured — show a helpful setup guide instead
+    stateDownloading.style.display = 'none';
+    stateNext.style.display = 'none';
+
+    // Replace overlay content with "build not ready yet" state
+    const card = document.querySelector('.dl-card');
+    const existingNotReady = document.getElementById('dl-state-notready');
+    if (existingNotReady) { existingNotReady.style.display = ''; return; }
+
+    const notReady = document.createElement('div');
+    notReady.id = 'dl-state-notready';
+    notReady.className = 'dl-state';
+    notReady.innerHTML = `
+      <div style="margin-bottom:20px;display:flex;justify-content:center">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+      </div>
+      <h3>Almost there!</h3>
+      <p style="color:var(--muted);margin-bottom:20px;line-height:1.5">The packaged app isn't published yet.<br>In the meantime, you can run it with 3 quick commands:</p>
+      <div style="background:#1a1a2e;border-radius:14px;padding:20px 24px;text-align:left;margin-bottom:20px;font-family:'SF Mono',Menlo,Monaco,monospace;font-size:13px;line-height:2;color:#e0e0e0;position:relative">
+        <button onclick="navigator.clipboard.writeText('git clone https://github.com/${GITHUB_REPO || 'yourusername/whatsapp-meter'}.git\\ncd whatsapp-meter\\nnpm install && npm start')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.1);border:none;color:#aaa;border-radius:8px;padding:4px 12px;font-size:11px;cursor:pointer">Copy</button>
+        <div><span style="color:#25D366">$</span> git clone ${GITHUB_REPO ? 'https://github.com/' + GITHUB_REPO + '.git' : '&lt;repo-url&gt;'}</div>
+        <div><span style="color:#25D366">$</span> cd whatsapp-meter</div>
+        <div><span style="color:#25D366">$</span> npm install && npm start</div>
+      </div>
+      <p style="color:var(--light);font-size:13px;margin-bottom:20px">Requires <a href="https://nodejs.org" target="_blank" style="color:var(--green-dark)">Node.js 18+</a> (one-time install). The setup wizard handles everything else.</p>
+      <div style="display:flex;gap:12px">
+        <button class="btn btn-primary" style="flex:1" onclick="closeDlOverlay()">Got it</button>
+        ${GITHUB_REPO ? '<a href="https://github.com/' + GITHUB_REPO + '" target="_blank" class="btn btn-secondary" style="flex:1">View on GitHub</a>' : ''}
+      </div>
+    `;
+    card.appendChild(notReady);
+  }
+}
+
+function closeDlOverlay() {
+  document.getElementById('dl-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  // Reset states for next open
+  const nr = document.getElementById('dl-state-notready');
+  if (nr) nr.style.display = 'none';
+}
+
+// Close overlay on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDlOverlay();
+});
+
+// ═══════════════════════════════════════════
+// SCROLL REVEAL
+// ═══════════════════════════════════════════
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.step, .feature, .faq-item').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(16px)';
+  el.style.transition = 'opacity .5s ease, transform .5s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
