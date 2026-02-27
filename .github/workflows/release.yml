@@ -1,20 +1,11 @@
-# ══════════════════════════════════════════════════════════════
-# WhatsApp Meter — Auto-build & Release
-# Triggers on version tags (e.g. v1.0.0)
-# Builds standalone executables for Mac, Windows, Linux
-# using Node.js Single Executable Applications (SEA)
-# ══════════════════════════════════════════════════════════════
 name: Build & Release
-
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # allows manual trigger from GitHub UI
-
+  workflow_dispatch:
 permissions:
   contents: write
-
 jobs:
   build:
     strategy:
@@ -22,88 +13,70 @@ jobs:
         include:
           - os: macos-latest
             platform: mac
-            artifact: WhatsApp-Meter-mac
-            node_binary: node
           - os: windows-latest
             platform: win
-            artifact: WhatsApp-Meter-win
-            node_binary: node.exe
           - os: ubuntu-latest
             platform: linux
-            artifact: WhatsApp-Meter-linux
-            node_binary: node
-
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      # ── Step 1: Bundle all JS into a single file ──
-      - name: Bundle with esbuild
+      - run: npm ci
+      - name: Bundle
         run: npx esbuild server.js --bundle --platform=node --outfile=dist/bundle.cjs --format=cjs --external:localtunnel --loader:.html=text
-
-      # ── Step 2: Generate SEA blob ──
-      - name: Generate SEA preparation blob
+      - name: Generate SEA blob
         run: node --experimental-sea-config sea-config.json
-
-      # ── Step 3: Create standalone executable ──
       - name: Create executable (Unix)
         if: matrix.platform != 'win'
         run: |
           cp $(which node) dist/whatsapp-meter
           chmod 755 dist/whatsapp-meter
           npx postject dist/whatsapp-meter NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
-
       - name: Create executable (Windows)
         if: matrix.platform == 'win'
         shell: powershell
         run: |
           Copy-Item (Get-Command node).Source dist/whatsapp-meter.exe
           npx postject dist/whatsapp-meter.exe NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
-
-      # ── Step 4: Copy required assets alongside executable ──
       - name: Copy assets
         run: |
           cp node_modules/sql.js/dist/sql-wasm.wasm dist/
           cp -r public dist/
           cp .env.example dist/.env.example
         shell: bash
-
-      # ── Step 5: Sign on macOS (ad-hoc) ──
-      - name: Sign macOS binary
-        if: matrix.platform == 'mac'
-        run: codesign --sign - --force dist/whatsapp-meter
-
-      # ── Step 6: Package for distribution ──
-      - name: Package Mac .dmg
+      - name: Package Mac .app + .dmg
         if: matrix.platform == 'mac'
         run: |
-          mkdir -p dmg-contents
-          cp -r dist/whatsapp-meter dist/sql-wasm.wasm dist/public dmg-contents/
-          cp .env.example dmg-contents/.env.example
-
-          # Create a simple launcher .command file
-          cat > dmg-contents/Start\ WhatsApp\ Meter.command << 'LAUNCHER'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          cd "$DIR"
-          open "http://localhost:3000" &
-          ./whatsapp-meter
-          LAUNCHER
-          chmod +x dmg-contents/Start\ WhatsApp\ Meter.command
-
-          hdiutil create -volname "WhatsApp Meter" -srcfolder dmg-contents -ov -format UDZO WhatsApp-Meter.dmg
-
+          APP="WhatsApp Meter.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp dist/whatsapp-meter "$APP/Contents/MacOS/whatsapp-meter"
+          cp dist/sql-wasm.wasm "$APP/Contents/MacOS/sql-wasm.wasm"
+          cp -r dist/public "$APP/Contents/MacOS/public"
+          cp .env.example "$APP/Contents/MacOS/.env.example"
+          chmod +x "$APP/Contents/MacOS/whatsapp-meter"
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\ncd "$DIR"\nopen "http://localhost:3000" &\nexec ./whatsapp-meter\n' > "$APP/Contents/MacOS/WhatsApp Meter"
+          chmod +x "$APP/Contents/MacOS/WhatsApp Meter"
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n<key>CFBundleName</key><string>WhatsApp Meter</string>\n<key>CFBundleIdentifier</key><string>com.emekafh.whatsapp-meter</string>\n<key>CFBundleVersion</key><string>1.0.0</string>\n<key>CFBundleExecutable</key><string>WhatsApp Meter</string>\n<key>CFBundleIconFile</key><string>AppIcon</string>\n<key>CFBundlePackageType</key><string>APPL</string>\n<key>LSMinimumSystemVersion</key><string>12.0</string>\n<key>NSHighResolutionCapable</key>\n<true/>\n</dict>\n</plist>\n' > "$APP/Contents/Info.plist"
+          mkdir -p icon.iconset
+          sips -z 16 16 build/icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32 build/icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32 build/icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64 build/icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128 build/icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256 build/icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256 build/icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512 build/icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512 build/icon.png --out icon.iconset/icon_512x512.png
+          cp build/icon.png icon.iconset/icon_512x512@2x.png
+          iconutil -c icns icon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+          codesign --sign - --force --deep "$APP"
+          mkdir -p dmg-stage
+          cp -r "$APP" dmg-stage/
+          ln -s /Applications dmg-stage/Applications
+          hdiutil create -volname "WhatsApp Meter" -srcfolder dmg-stage -ov -format UDZO WhatsApp-Meter.dmg
       - name: Package Windows .zip
         if: matrix.platform == 'win'
         shell: powershell
@@ -111,95 +84,43 @@ jobs:
           New-Item -ItemType Directory -Path pkg -Force
           Copy-Item dist/whatsapp-meter.exe, dist/sql-wasm.wasm, dist/.env.example -Destination pkg/
           Copy-Item -Recurse dist/public -Destination pkg/public
-
-          # Create a launcher batch file
-          @"
-          @echo off
-          cd /d "%~dp0"
-          start http://localhost:3000
-          whatsapp-meter.exe
-          "@ | Set-Content pkg/Start_WhatsApp_Meter.bat
-
+          '@echo off' + "`n" + 'cd /d "%~dp0"' + "`n" + 'start http://localhost:3000' + "`n" + 'whatsapp-meter.exe' | Set-Content pkg/Start_WhatsApp_Meter.bat
           Compress-Archive -Path pkg/* -DestinationPath WhatsApp-Meter-Windows.zip
-
       - name: Package Linux .tar.gz
         if: matrix.platform == 'linux'
         run: |
           mkdir -p pkg
           cp dist/whatsapp-meter dist/sql-wasm.wasm dist/.env.example pkg/
           cp -r dist/public pkg/
-
-          # Create a launcher script
-          cat > pkg/start.sh << 'LAUNCHER'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          cd "$DIR"
-          xdg-open "http://localhost:3000" 2>/dev/null &
-          ./whatsapp-meter
-          LAUNCHER
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\ncd "$DIR"\nxdg-open "http://localhost:3000" 2>/dev/null &\n./whatsapp-meter\n' > pkg/start.sh
           chmod +x pkg/start.sh pkg/whatsapp-meter
-
           tar -czf WhatsApp-Meter-Linux.tar.gz -C pkg .
-
-      # ── Step 7: Upload artifacts ──
-      - name: Upload Mac artifact
-        if: matrix.platform == 'mac'
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-mac
-          path: WhatsApp-Meter.dmg
-
-      - name: Upload Windows artifact
-        if: matrix.platform == 'win'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-win
-          path: WhatsApp-Meter-Windows.zip
-
-      - name: Upload Linux artifact
-        if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-linux
-          path: WhatsApp-Meter-Linux.tar.gz
-
+          name: release-${{ matrix.platform }}
+          path: |
+            WhatsApp-Meter.dmg
+            WhatsApp-Meter-Windows.zip
+            WhatsApp-Meter-Linux.tar.gz
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: List built files
-        run: find artifacts -type f | sort
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: WhatsApp Meter ${{ github.ref_name }}
           body: |
-            ## Download WhatsApp Meter
-
-            | Platform | Download |
-            |----------|----------|
-            | **Mac** (.dmg) | See assets below |
-            | **Windows** (.zip) | See assets below |
-            | **Linux** (.tar.gz) | See assets below |
-
-            ### How to install
-
-            **Mac:** Download the .dmg, open it, double-click "Start WhatsApp Meter"
-            **Windows:** Download the .zip, extract it, double-click "Start_WhatsApp_Meter.bat"
-            **Linux:** Download the .tar.gz, extract it, run `./start.sh`
-
-            The setup wizard will open in your browser and walk you through everything.
+            Mac: Download .dmg, open it, drag WhatsApp Meter to Applications
+            Windows: Download .zip, extract, double-click Start_WhatsApp_Meter.bat
+            Linux: Download .tar.gz, extract, run ./start.sh
           files: |
             artifacts/release-mac/WhatsApp-Meter.dmg
             artifacts/release-win/WhatsApp-Meter-Windows.zip
             artifacts/release-linux/WhatsApp-Meter-Linux.tar.gz
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
