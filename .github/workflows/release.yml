@@ -75,6 +75,7 @@ jobs:
           sips -z 512 512 build/icon.png --out icon.iconset/icon_512x512.png
           cp build/icon.png icon.iconset/icon_512x512@2x.png
           iconutil -c icns icon.iconset -o "$RESOURCES/AppIcon.icns"
+          rm -rf dist node_modules
           codesign --sign - --force --deep "$APP"
           mkdir -p dmg-stage
           cp -r "$APP" dmg-stage/
