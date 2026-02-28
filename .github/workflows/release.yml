@@ -25,7 +25,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Bundle
+      - name: Bundle with esbuild
         run: npx esbuild server.js --bundle --platform=node --outfile=dist/bundle.cjs --format=cjs --external:localtunnel --loader:.html=text
       - name: Generate SEA blob
         run: node --experimental-sea-config sea-config.json
@@ -51,15 +51,18 @@ jobs:
         if: matrix.platform == 'mac'
         run: |
           APP="WhatsApp Meter.app"
-          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp dist/whatsapp-meter "$APP/Contents/MacOS/whatsapp-meter"
-          cp dist/sql-wasm.wasm "$APP/Contents/MacOS/sql-wasm.wasm"
-          cp -r dist/public "$APP/Contents/MacOS/public"
-          cp .env.example "$APP/Contents/MacOS/.env.example"
-          chmod +x "$APP/Contents/MacOS/whatsapp-meter"
-          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\ncd "$DIR"\nopen "http://localhost:3000" &\nexec ./whatsapp-meter\n' > "$APP/Contents/MacOS/WhatsApp Meter"
-          chmod +x "$APP/Contents/MacOS/WhatsApp Meter"
-          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n<key>CFBundleName</key><string>WhatsApp Meter</string>\n<key>CFBundleIdentifier</key><string>com.emekafh.whatsapp-meter</string>\n<key>CFBundleVersion</key><string>1.0.0</string>\n<key>CFBundleExecutable</key><string>WhatsApp Meter</string>\n<key>CFBundleIconFile</key><string>AppIcon</string>\n<key>CFBundlePackageType</key><string>APPL</string>\n<key>LSMinimumSystemVersion</key><string>12.0</string>\n<key>NSHighResolutionCapable</key>\n<true/>\n</dict>\n</plist>\n' > "$APP/Contents/Info.plist"
+          CONTENTS="$APP/Contents"
+          MACOS="$CONTENTS/MacOS"
+          RESOURCES="$CONTENTS/Resources"
+          mkdir -p "$MACOS" "$RESOURCES"
+          cp dist/whatsapp-meter "$MACOS/whatsapp-meter"
+          cp dist/sql-wasm.wasm "$MACOS/sql-wasm.wasm"
+          cp -r dist/public "$MACOS/public"
+          cp .env.example "$MACOS/.env.example"
+          chmod +x "$MACOS/whatsapp-meter"
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\ncd "$DIR"\nopen "http://localhost:3000" &\nexec ./whatsapp-meter\n' > "$MACOS/WhatsApp Meter"
+          chmod +x "$MACOS/WhatsApp Meter"
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n<key>CFBundleName</key><string>WhatsApp Meter</string>\n<key>CFBundleDisplayName</key><string>WhatsApp Meter</string>\n<key>CFBundleIdentifier</key><string>com.emekafh.whatsapp-meter</string>\n<key>CFBundleVersion</key><string>1.0.0</string>\n<key>CFBundleShortVersionString</key><string>1.0.0</string>\n<key>CFBundleExecutable</key><string>WhatsApp Meter</string>\n<key>CFBundleIconFile</key><string>AppIcon</string>\n<key>CFBundlePackageType</key><string>APPL</string>\n<key>LSMinimumSystemVersion</key><string>12.0</string>\n<key>NSHighResolutionCapable</key>\n<true/>\n</dict>\n</plist>\n' > "$CONTENTS/Info.plist"
           mkdir -p icon.iconset
           sips -z 16 16 build/icon.png --out icon.iconset/icon_16x16.png
           sips -z 32 32 build/icon.png --out icon.iconset/icon_16x16@2x.png
@@ -71,7 +74,7 @@ jobs:
           sips -z 512 512 build/icon.png --out icon.iconset/icon_256x256@2x.png
           sips -z 512 512 build/icon.png --out icon.iconset/icon_512x512.png
           cp build/icon.png icon.iconset/icon_512x512@2x.png
-          iconutil -c icns icon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+          iconutil -c icns icon.iconset -o "$RESOURCES/AppIcon.icns"
           codesign --sign - --force --deep "$APP"
           mkdir -p dmg-stage
           cp -r "$APP" dmg-stage/
@@ -84,7 +87,7 @@ jobs:
           New-Item -ItemType Directory -Path pkg -Force
           Copy-Item dist/whatsapp-meter.exe, dist/sql-wasm.wasm, dist/.env.example -Destination pkg/
           Copy-Item -Recurse dist/public -Destination pkg/public
-          '@echo off' + "`n" + 'cd /d "%~dp0"' + "`n" + 'start http://localhost:3000' + "`n" + 'whatsapp-meter.exe' | Set-Content pkg/Start_WhatsApp_Meter.bat
+          '@echo off', 'cd /d "%~dp0"', 'start http://localhost:3000', 'whatsapp-meter.exe' | Set-Content pkg/Start_WhatsApp_Meter.bat
           Compress-Archive -Path pkg/* -DestinationPath WhatsApp-Meter-Windows.zip
       - name: Package Linux .tar.gz
         if: matrix.platform == 'linux'
@@ -115,9 +118,10 @@ jobs:
         with:
           name: WhatsApp Meter ${{ github.ref_name }}
           body: |
-            Mac: Download .dmg, open it, drag WhatsApp Meter to Applications
-            Windows: Download .zip, extract, double-click Start_WhatsApp_Meter.bat
-            Linux: Download .tar.gz, extract, run ./start.sh
+            ## Download WhatsApp Meter
+            **Mac:** Download the .dmg, open it, drag WhatsApp Meter to Applications
+            **Windows:** Download the .zip, extract it, double-click Start_WhatsApp_Meter.bat
+            **Linux:** Download the .tar.gz, extract it, run ./start.sh
           files: |
             artifacts/release-mac/WhatsApp-Meter.dmg
             artifacts/release-win/WhatsApp-Meter-Windows.zip
